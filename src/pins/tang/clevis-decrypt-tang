@@ -92,12 +92,13 @@ if ! crv="$(jose fmt -j- -Og crv -Su- <<< "$clt")"; then
     exit 1
 fi
 
-if ! eph="$(jose jwk gen -i "{\"alg\":\"ECMR\",\"crv\":\"$crv\"}")"; then
+if ! eph="$(jose jwk gen -i "{\"alg\":\"ECOPRF\",\"crv\":\"$crv\"}")"; then
     echo "Error generating ephemeral key!" >&2
     exit 1
 fi
 
-xfr="$(jose jwk exc -i '{"alg":"ECMR"}' -l- -r- <<< "$clt$eph")"
+xfr="$(jose jwk exc -i '{"alg":"ECOPRF"}' -l- -r- <<< "$clt$eph" | jose fmt -j- -Od alg -o-)"
+# echo "$xfr" >&2
 
 rec_url="$url/rec/$kid"
 ct="Content-Type: application/jwk+json"
@@ -111,8 +112,8 @@ if ! rep="$(jose fmt -j- -Og kty -q EC -EUUg crv -q "$crv" -EUUo- <<< "$rep")"; 
     exit 1
 fi
 
-tmp="$(jose jwk exc -i '{"alg":"ECMR"}' -l- -r- <<< "$eph$srv")"
-rep="$(jose jwk pub -i- <<< "$rep")"
-jwk="$(jose jwk exc -l- -r- <<< "$rep$tmp")"
+rep="$(jose jwk pub -i- <<< "$rep" | jose fmt -j- -Od alg -o-)"
+jwk="$(jose jwk exc -i '{"alg":"ECOPRF"}' -l- -r- <<< "$eph$rep" | jose fmt -j- -Od alg -o-)"
+# echo "$jwk" >&2
 (echo -n "$jwk$hdr."; /bin/cat) | jose jwe dec -k- -i-
 exit $?
